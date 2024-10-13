@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSA Search Engine</title>
+    
+    <!-- External Libraries -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Inline CSS -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Georgia, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+            color: #333;
+        }
+
+        #searchForm {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        #searchForm input[type="text"] {
+            padding: 10px;
+            width: 50%;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1.1rem;
+        }
+
+        #searchForm button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            font-size: 1.1rem;
+            border: none;
+            background-color: blueviolet;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #searchForm button:hover {
+            background-color: #218838;
+        }
+
+        #results {
+            margin-bottom: 30px;
+        }
+
+        #results p {
+            background-color: #fff;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #similarityChart {
+            margin: 0 auto;
+            display: block;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>LSA Search Engine</h1>
+
+    <form id="searchForm">
+        <input type="text" id="query" name="query" placeholder="Enter your query" required>
+        <button type="submit">Search</button>
+    </form>
+
+    <div id="results"></div>
+    <canvas id="similarityChart" width="400" height="200"></canvas>
+
+    <script>
+        $('#searchForm').on('submit', function(e) {
+            e.preventDefault();
+            let query = $('#query').val();
+            $.ajax({
+                type: 'POST',
+                url: '/search',
+                data: {query: query},
+                success: function(response) {
+                    let resultsDiv = $('#results');
+                    resultsDiv.empty();
+                    
+                    // Display the top 5 documents with actual document numbers
+                    response.documents.forEach(function(doc, index) {
+                        let actualDocNum = response.indices[index];
+                        resultsDiv.append(`<p><strong>Document ${actualDocNum} (Similarity: ${response.similarities[index].toFixed(3)})</strong><br> ${doc}</p>`);
+                    });
+
+                    // Parse the similarities as numbers
+                    const similarities = response.similarities.map(Number);
+                    
+                    // Update the chart with the new similarity scores
+                    const ctx = document.getElementById('similarityChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            // Use the actual document numbers for the labels
+                            labels: response.indices.map(i => `Doc ${i}`), 
+                            datasets: [{
+                                label: 'Cosine Similarity',
+                                data: similarities,  // Ensure the data is numerical
+                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 1.0  // Set the maximum value for the y-axis to 1
+                                }
+                            }
+                        }
+                    });
+                },
+                error: function() {
+                    alert('Error performing search.');
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
